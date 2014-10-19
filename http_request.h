@@ -3,19 +3,16 @@
 
 #include <uv.h>
 
+#include "http_url.h"
 #include "third-party/http-parser/http_parser.h"
 
 typedef struct http_request {
+	http_url             *url;
 	uv_tcp_t             *stream;
 
-	uv_buf_t              method;
-	uv_buf_t			  url;
-	uv_buf_t              version;
-
-	uv_buf_t              send_buf;
-	uv_buf_t              recv_buf;
-
-
+	uv_buf_t             *send_buf;
+	size_t                send_buf_cnt;
+	
 	http_parser           http_parser;
 	http_parser_settings *http_parser_setting;
 
@@ -33,5 +30,9 @@ void http_request_set_url(http_request *req, const char *url);
 
 
 void http_request_set_version(http_request *req, const char *version);
+
+
+void http_send_request(http_request *req);
+
 
 #endif

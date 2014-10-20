@@ -3,11 +3,12 @@
 
 #include <uv.h>
 
-#include "http_url.h"
 #include "third-party/http-parser/http_parser.h"
 
+extern struct downloader;
+
 typedef struct http_request {
-	http_url             *url;
+	struct downloader	 *dler;
 	uv_tcp_t             *stream;
 
 	uv_buf_t             *send_buf;
@@ -16,11 +17,10 @@ typedef struct http_request {
 	http_parser           http_parser;
 	http_parser_settings *http_parser_setting;
 
-
-
 } http_request;
 
-void http_request_init(http_request *req);
+
+http_request *http_request_new(struct downloader *dler);
 
 
 void http_request_set_method(http_request *req, const char *method);

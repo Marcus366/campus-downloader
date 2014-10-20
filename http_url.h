@@ -22,4 +22,6 @@ void      http_free_url(http_url *url);
 
 uv_buf_t  http_url_get_field(http_url *url, http_parser_url_fields field);
 
+int       http_url_get_port(http_url *url);
+
 #endif

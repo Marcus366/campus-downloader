@@ -47,7 +47,7 @@ on_body(http_parser *parser, const char *at, size_t length)
 
 	uv_fs_t *req = malloc(sizeof(uv_fs_t));
 	uv_buf_t buf = uv_buf_init(at, length);
-	uv_fs_write(uv_default_loop(), req, dler->file, &buf, 1, -1, NULL);
+	uv_fs_write(uv_default_loop(), req, dler->file->fd, &buf, 1, -1, NULL);
 
 	return 0;
 }
@@ -62,7 +62,7 @@ on_message_complete(http_parser *parser)
 
 	uv_read_stop((uv_stream_t*)req->stream);
 	uv_close((uv_handle_t*)req->stream, NULL);
-	uv_fs_close(uv_default_loop(), fs, dler->file, NULL);
+	uv_fs_close(uv_default_loop(), fs, dler->file->fd, NULL);
 
 	printf("close tcp socket\n");
 

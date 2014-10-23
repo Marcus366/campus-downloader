@@ -2,6 +2,7 @@
 #define __CAMPUS_DOWNLOADER_H__
 
 #include <uv.h>
+#include "file.h"
 #include "http_url.h"
 #include "http_request.h"
 
@@ -9,7 +10,7 @@
 typedef struct addrinfo addrinfo;
 
 typedef struct downloader {
-	uv_file	      file;
+	file          *file;
 	http_url      *url;
 	
 	addrinfo      *addrinfo;

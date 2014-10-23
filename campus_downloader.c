@@ -62,7 +62,8 @@ on_open(uv_fs_t *req)
 	}
 	
 	downloader *dler = (downloader*)req->data;
-	dler->file = req->result;
+	dler->file = malloc(sizeof(file));
+	dler->file->fd = req->result;
 
 	/* change host to a zero-terminated string for uv_getaddrinfo() */
 	uv_buf_t buf = http_url_get_field(dler->url, UF_HOST);

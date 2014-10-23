@@ -34,5 +34,52 @@ void http_request_set_version(http_request *req, const char *version);
 
 void http_send_request(http_request *req);
 
+static void
+http_set_on_message_begin(http_request *req, http_cb on_message_begin)
+{
+	req->http_parser_setting->on_message_begin = on_message_begin;
+}
+
+static void
+http_set_on_url(http_request *req, http_data_cb on_url)
+{
+	req->http_parser_setting->on_url = on_url;
+}
+
+static void
+http_set_on_status(http_request *req, http_data_cb on_status)
+{
+	req->http_parser_setting->on_status = on_status;
+}
+
+static void
+http_set_on_header_field(http_request *req, http_data_cb on_header_field)
+{
+	req->http_parser_setting->on_header_field = on_header_field;
+}
+
+static void
+http_set_on_header_value(http_request *req, http_data_cb on_header_value)
+{
+	req->http_parser_setting->on_header_value = on_header_value;
+}
+
+static void
+http_set_on_headers_complete(http_request *req, http_cb on_headers_complete)
+{
+	req->http_parser_setting->on_headers_complete = on_headers_complete;
+}
+
+static void
+http_set_on_body(http_request *req, http_data_cb on_body)
+{
+	req->http_parser_setting->on_body = on_body;
+}
+
+static void
+http_set_on_message_complete(http_request *req, http_cb on_message_complete)
+{
+	req->http_parser_setting->on_message_complete = on_message_complete;
+}
 
 #endif

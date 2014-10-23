@@ -8,9 +8,11 @@
 extern struct downloader;
 
 typedef struct http_request {
-	struct downloader	 *dler;
+	struct task          *task;
 	uv_tcp_t             *stream;
 
+	enum http_method      method;
+	
 	uv_buf_t             *send_buf;
 	size_t                send_buf_cnt;
 	
@@ -20,16 +22,21 @@ typedef struct http_request {
 } http_request;
 
 
-http_request *http_request_new(struct downloader *dler);
+http_request *http_request_new(struct task *task);
 
 
-void http_request_set_method(http_request *req, const char *method);
+void http_request_finish(struct http_request *req);
 
 
-void http_request_set_url(http_request *req, const char *url);
+static void
+http_request_set_method(http_request *req, enum http_method method)
+{
+	req->method = method;
+}
 
 
-void http_request_set_version(http_request *req, const char *version);
+/* void http_request_set_url(http_request *req, const char *url);         */
+/* void http_request_set_version(http_request *req, const char *version); */
 
 
 void http_send_request(http_request *req);

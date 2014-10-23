@@ -3,30 +3,38 @@
 
 #include <uv.h>
 
+#include "http_url.h"
+#include "http_request.h"
 #include "third-party/container/skiplist.h"
 
-typedef struct block {
-	struct task *task;
 
-	uint64_t     start;
-	uint64_t     end;
-
-	uint64_t     pos;
-} block;
-
-
+/*
+ * A task is mean a download task. In this downloader,
+ * one task is just associated with one downloading file.
+ */
 typedef struct task {
-	uv_file     fd;
-	const char *name;
+	/* attached file message */
+	uv_file           fd;
+	const char       *name;
 
-	uint64_t    cur_size;
-	uint64_t    total_size;
+	/* server message */
+	http_url         *url;
+	struct addrinfo  *addrinfo;
 
-	skiplist   *blocks;
+	http_request     *head_request;
 
+	/* */
+	uint64_t          cur_size;
+	uint64_t          total_size;
+	skiplist         *blocks;
+
+	/* a list to link all the task */
+	struct task      *next;
 } task;
 
 
-struct task* create_task(const char *fullname);
+struct task* create_task(const char *url, const char *fullname);
+
+
 
 #endif

@@ -19,7 +19,8 @@ main(int argc, char** argv)
 		filename = argv[2];
 	}
 
-	downloader *dler = downloader_new(str, filename);
+	downloader *dler = downloader_new();
+	downloader_add_task(dler, str, filename);
 	downloader_run(dler);
 
 	system("pause");

@@ -14,6 +14,7 @@
  */
 typedef struct task {
 	struct downloader *dler;
+
 	/* attached file message */
 	uv_file            fd;
 	const char        *name;
@@ -32,7 +33,10 @@ typedef struct task {
 	/* time statistic */
 	uint64_t           start_time;
 	uint64_t           consumed_time;
+
+	/* used for calculate speed */
 	uint64_t           last_step_time;
+	uint64_t           last_step_size;
 
 	/* a list to link all the task */
 	struct task       *next;

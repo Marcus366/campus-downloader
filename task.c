@@ -21,7 +21,7 @@ static int
 block_cmp(const void *lhs, const void *rhs)
 {
 	block *lb = (block*)lhs, *rb = (block*)rhs;
-	return lb->start - rb->start;
+	return (int)(lb->start - rb->start);
 }
 
 
@@ -39,8 +39,11 @@ create_task(downloader *dler, const char *url, const char *fullname)
 
 	task->blocks        = skiplist_new(16, block_cmp);
 
-	task->start_time    = task->last_step_time = uv_now(uv_default_loop());
+	task->start_time    = uv_now(uv_default_loop());
 	task->consumed_time = 0;
+
+	task->last_step_time = task->start_time;
+	task->last_step_size = task->cur_size;
 
 	task->next          = NULL;
 

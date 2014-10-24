@@ -56,8 +56,16 @@ timer_cb(uv_timer_t *handle)
 	}
 
 	while (task) {
-		printf("download %lld bytes / %lld bytes ======================= %.0f%%\r", task->cur_size, task->total_size
-			   , task->cur_size * 100.0f / task->total_size);
+		uint64_t now = uv_now(handle->loop);
+		double speed = (task->cur_size - task->last_step_size) * 1.0 / (now - task->last_step_time);
+
+		task->consumed_time += now - task->last_step_time;
+		task->last_step_size = task->cur_size;
+		task->last_step_time = now;
+
+		printf("download %lld bytes / %lld bytes ================== speed: %.2lfkb/s %.0f%%\r", 
+			   task->cur_size, task->total_size, speed,
+			   task->cur_size * 100.0f / task->total_size);
 
 		task = task->next;
 	}

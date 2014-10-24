@@ -127,6 +127,7 @@ on_message_complete(http_parser *parser)
 	task **p, *task;
 	http_request *req;
 	downloader *dler;
+	double speed;
 
 	req  = parser->data;
 	task = req->task;
@@ -137,7 +138,9 @@ on_message_complete(http_parser *parser)
 	while (*p) {
 		if (*p == task) {
 			*p = task->next;
+			speed = task->total_size * 1.0 / task->consumed_time;
 			/* TODO free the task resource */
+			break;
 		} else {
 			p = &task->next;
 		}
@@ -146,8 +149,9 @@ on_message_complete(http_parser *parser)
 	/* close the tcp connection */
 	http_request_finish(req);
 
-	printf("                                                                   \r");
-	printf("download completed!\n");
+	
+	printf("                                                                             \r");
+	printf("download completed! average spped: %.2lf kb/s\n", speed);
 
 	downloading = 0;
 

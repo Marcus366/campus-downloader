@@ -56,13 +56,14 @@ http_url_get_port(http_url *url)
 	http_parser_url *parser = &url->result;
 
 	if ((1 << UF_PORT) & parser->field_set) {
-		int i = 0, port = 0;
+		int port = 0;
+		unsigned i = 0;
 		uv_buf_t buf = uv_buf_init(url->raw_url.base + parser->field_data[UF_PORT].off,
 								   parser->field_data[UF_PORT].len);
-		char *p = buf.base + buf.len - 1;
+		char *p = buf.base;
 		while (i < buf.len) {
 			port = 10 * port + (*p) - '0';
-			--p;
+			++p;
 			++i;
 		}
 
@@ -75,4 +76,6 @@ http_url_get_port(http_url *url)
 	} else if (strncmp(schema.base, "https://", min(schema.len, 8)) == 0) {
 		return 223;
 	}
+
+	return 80;
 }

@@ -3,6 +3,7 @@
 #include "task.h"
 #include "block.h"
 #include "http_url.h"
+#include "campus_downloader.h"
 #include "third-party/http-parser/http_parser.h"
 
 
@@ -25,16 +26,23 @@ block_cmp(const void *lhs, const void *rhs)
 
 
 struct task*
-create_task(const char *url, const char *fullname)
+create_task(downloader *dler, const char *url, const char *fullname)
 {
 	struct task *task = malloc(sizeof(struct task));
 
-	task->name     = _strdup(fullname);
-	task->cur_size = 0;
+	task->dler          = dler;
+	task->next          = dler->task;
+	dler->task          = task;
 
-	task->blocks   = skiplist_new(16, block_cmp);
+	task->name          = _strdup(fullname);
+	task->cur_size      = 0;
 
-	task->next     = NULL;
+	task->blocks        = skiplist_new(16, block_cmp);
+
+	task->start_time    = task->last_step_time = uv_now(uv_default_loop());
+	task->consumed_time = 0;
+
+	task->next          = NULL;
 
 	if (strncmp(url, "http://", 7) == 0) {
 		task->url = http_parse_url(url);
@@ -60,10 +68,10 @@ create_task(const char *url, const char *fullname)
 	memcpy(host, buf.base, buf.len);
 
 	struct addrinfo hints;
-	hints.ai_family = PF_INET;
+	hints.ai_family   = PF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
-	hints.ai_flags = 0;
+	hints.ai_flags    = 0;
 
 	uv_getaddrinfo_t *getaddrinfo = malloc(sizeof(uv_getaddrinfo_t));
 	getaddrinfo->data = task;
@@ -201,10 +209,9 @@ on_header_value(http_parser *parser, const char *at, size_t length)
 		task         *task    = request->task;
 
 		uint64_t *p = &task->total_size;
-		*p = 0;
-		while (length) {
-			*p = (*p) * 10 + at[length - 1] - '0';
-			--length;
+		int i;
+		for (i = 0, *p = 0; length; ++i, --length) {
+			*p = (*p) * 10 + at[i] - '0';
 		}
 	}
 

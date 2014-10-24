@@ -9,6 +9,8 @@
 
 typedef struct addrinfo addrinfo;
 
+extern unsigned downloading;
+
 typedef struct downloader {
 	task          *task;
 	

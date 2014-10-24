@@ -13,27 +13,33 @@
  * one task is just associated with one downloading file.
  */
 typedef struct task {
+	struct downloader *dler;
 	/* attached file message */
-	uv_file           fd;
-	const char       *name;
+	uv_file            fd;
+	const char        *name;
 
 	/* server message */
-	http_url         *url;
-	struct addrinfo  *addrinfo;
+	http_url          *url;
+	struct addrinfo   *addrinfo;
 
-	http_request     *head_request;
+	http_request      *head_request;
 
 	/* */
-	uint64_t          cur_size;
-	uint64_t          total_size;
-	skiplist         *blocks;
+	uint64_t           cur_size;
+	uint64_t           total_size;
+	skiplist          *blocks;
+
+	/* time statistic */
+	uint64_t           start_time;
+	uint64_t           consumed_time;
+	uint64_t           last_step_time;
 
 	/* a list to link all the task */
-	struct task      *next;
+	struct task       *next;
 } task;
 
 
-struct task* create_task(const char *url, const char *fullname);
+struct task* create_task(struct downloader *dler, const char *url, const char *fullname);
 
 
 

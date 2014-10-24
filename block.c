@@ -1,6 +1,10 @@
 #include <stdio.h>
+#include "campus_downloader.h"
 #include "block.h"
 #include "task.h"
+
+
+extern unsigned downloading;
 
 
 static void send_request(uv_connect_t *req, int status);
@@ -16,10 +20,10 @@ create_block(struct task *task, uint64_t start, uint64_t end)
 {
 	struct block *block = malloc(sizeof(block));
 
-	block->task = task;
+	block->task  = task;
 	block->start = start;
-	block->pos = start;
-	block->end = end;
+	block->pos   = start;
+	block->end   = end;
 
 	block->request = http_request_new(task);
 
@@ -34,7 +38,6 @@ get_block(struct block *block)
 
 	char addr[17] = { 0 };
 	uv_ip4_name((struct sockaddr_in*)task->addrinfo->ai_addr, addr, 16);
-	printf("resolver ip %s\n", addr);
 
 	struct sockaddr_in dest;
 	uv_ip4_addr(addr, http_url_get_port(task->url), &dest);
@@ -61,6 +64,7 @@ send_request(uv_connect_t *req, int status)
 	struct task  *task = block->task;
 	http_request *request = block->request;
 
+	downloading = 1;
 	uv_read_start(req->handle, on_alloc, on_read);
 
 	request->stream = (uv_tcp_t*) req->handle;
@@ -112,8 +116,6 @@ on_body(http_parser *parser, const char *at, size_t length)
 	uv_fs_write(uv_default_loop(), req, task->fd, &buf, 1, -1, NULL);
 
 	task->cur_size += length;
-	printf("\rdownload %lld bytes /%lld bytes ============ %.0f%%", task->cur_size, task->total_size,
-		   task->cur_size * 100.0f / task->total_size);
 
 	return 0;
 }
@@ -122,12 +124,32 @@ on_body(http_parser *parser, const char *at, size_t length)
 static int
 on_message_complete(http_parser *parser)
 {
-	http_request *req = parser->data;
+	task **p, *task;
+	http_request *req;
+	downloader *dler;
 
+	req  = parser->data;
+	task = req->task;
+	dler = task->dler;
+
+	/* remove the task from tasks list */
+	p = &dler->task;
+	while (*p) {
+		if (*p == task) {
+			*p = task->next;
+			/* TODO free the task resource */
+		} else {
+			p = &task->next;
+		}
+	}
+	
+	/* close the tcp connection */
 	http_request_finish(req);
 
-	printf("\r                                                         ");
-	printf("\rdownload completed!\n");
+	printf("                                                                   \r");
+	printf("download completed!\n");
+
+	downloading = 0;
 
 	return 0;
 }

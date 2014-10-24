@@ -5,8 +5,14 @@
 #include "campus_downloader.h"
 
 
+unsigned downloading = 0;
+
+
+static int timer_cb(uv_timer_t *handle);
+
+
 downloader*
-downloader_new(const char *url, const char *fullname)
+downloader_new()
 {
 	downloader *dler = malloc(sizeof(downloader));
 
@@ -18,13 +24,43 @@ downloader_new(const char *url, const char *fullname)
 void
 downloader_add_task(downloader *dler, const char *url, const char *fullname)
 {
-	task *newtask = create_task(url, fullname);
-	newtask = dler->task;
+	task *newtask = create_task(dler, url, fullname);
 }
+
 
 int
 downloader_run(downloader* dler)
 {
+	uv_timer_t timer;
+	timer.data = dler;
+	uv_timer_init(uv_default_loop(), &timer);
+	uv_timer_start(&timer, timer_cb, 0, 500);
+
 	return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
 }
 
+
+static int
+timer_cb(uv_timer_t *handle)
+{
+	downloader *dler  = (downloader*)handle->data;
+	struct task *task = dler->task;
+
+	if (task == NULL) {
+		uv_timer_stop(handle);
+		return 0;
+	}
+
+	if (downloading == 0) {
+		return 0;
+	}
+
+	while (task) {
+		printf("download %lld bytes / %lld bytes ======================= %.0f%%\r", task->cur_size, task->total_size
+			   , task->cur_size * 100.0f / task->total_size);
+
+		task = task->next;
+	}
+
+	return 0;
+}

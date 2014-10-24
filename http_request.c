@@ -28,15 +28,17 @@ http_request_new(struct task *task)
 void
 http_request_finish(http_request *req)
 {
-	uv_read_stop(req->stream);
+	uv_read_stop((uv_stream_t*)req->stream);
 	uv_close((uv_handle_t*)req->stream, NULL);
 
 	free(req->http_parser_setting);
 	free(req);
 }
 
-static const uv_buf_t END_LINE = {.base = "\r\n", .len = 2};
+
+static const uv_buf_t ENDLINE  = {.base = "\r\n", .len = 2};
 static const uv_buf_t SPACE    = {.base = " ",    .len = 1};
+
 
 void
 http_send_request(http_request *req)
@@ -52,11 +54,11 @@ http_send_request(http_request *req)
 	buf[2] = http_url_get_field(req->task->url, UF_PATH);
 	buf[3] = SPACE;
 	buf[4] = uv_buf_init("HTTP/1.1", sizeof("HTTP/1.1") - 1);
-	buf[5] = END_LINE;
+	buf[5] = ENDLINE;
 	buf[6] = uv_buf_init("Host: ", sizeof("Host: ") - 1);
 	buf[7] = http_url_get_field(req->task->url, UF_HOST);
-	buf[8] = END_LINE;
-	buf[9] = END_LINE;
+	buf[8] = ENDLINE;
+	buf[9] = ENDLINE;
 	
 	uv_write_t *write = malloc(sizeof(uv_write_t));
 	uv_write(write, (uv_stream_t*)req->stream, req->send_buf, req->send_buf_cnt, NULL);

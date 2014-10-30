@@ -29,17 +29,17 @@ struct task*
 create_task(downloader *dler, const char *url, const char *fullname)
 {
 	struct task *task = malloc(sizeof(struct task));
-
+	
 	task->dler          = dler;
-	task->next          = dler->task;
-	dler->task          = task;
+	task->next          = dler->tasks;
+	dler->tasks         = task;
 
 	task->name          = _strdup(fullname);
 	task->cur_size      = 0;
 
 	task->blocks        = skiplist_new(16, block_cmp);
 
-	task->start_time    = uv_now(uv_default_loop());
+	task->start_time    = uv_now(dler->mainloop);
 	task->consumed_time = 0;
 
 	task->last_step_time = task->start_time;
@@ -141,7 +141,7 @@ send_head_request(uv_connect_t *req, int status)
 	http_send_request(request);
 
 	uv_fs_t fs;
-	task->fd = uv_fs_open(uv_default_loop(), &fs, task->name, O_CREAT | O_RDWR, 0777, NULL);
+	task->fd = uv_fs_open(req->handle->loop, &fs, task->name, O_CREAT | O_RDWR, 0777, NULL);
 }
 
 

@@ -22,19 +22,46 @@ create_block(struct task *task, uint64_t start, uint64_t end)
 
 	block->task  = task;
 	block->start = start;
-	block->pos   = start;
 	block->end   = end;
 
+	block->downloaded_pos = start;
+	block->confirmed_pos  = start;
+
 	block->request = http_request_new(task);
+
+	block->next = NULL;
 
 	return block;
 }
 
 
 void
+dispatcher_block(struct task *task, struct block *block)
+{
+	downloader *dler = task->dler;
+	struct worker *worker = dler->workers;
+
+	/* TODO: 
+	 * It just a temperary work around to select thread.
+	 * Please change a way to load-balanced.
+	 */
+	int rad = rand() % 4;
+	while (rad--) {
+		worker = worker->next;
+	}
+
+	block->worker = worker;
+
+	block->next = worker->waiting_list;
+	worker->waiting_list = block;
+}
+
+
+void
 get_block(struct block *block)
 {
-	struct task *task = block->task;
+	struct task   *task   = block->task;
+	struct worker *worker = block->worker;
 
 	char addr[17] = { 0 };
 	uv_ip4_name((struct sockaddr_in*)task->addrinfo->ai_addr, addr, 16);
@@ -44,7 +71,7 @@ get_block(struct block *block)
 
 	uv_connect_t *connect = malloc(sizeof(uv_connect_t));
 	uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
-	uv_tcp_init(uv_default_loop(), client);
+	uv_tcp_init(worker->loop, client);
 
 	connect->data = block;
 	client->data  = block;
@@ -71,6 +98,7 @@ send_request(uv_connect_t *req, int status)
 	http_set_on_body(request, on_body);
 	http_set_on_message_complete(request, on_message_complete);
 	http_request_set_method(request, HTTP_GET);
+	http_request_set_accept_range(request, block->start, block->end);
 	http_send_request(request);
 }
 
@@ -105,17 +133,25 @@ on_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t *buf)
 }
 
 
+static void
+after_write(uv_write_t *req)
+{
+	free(req);
+}
+
+
 static int
 on_body(http_parser *parser, const char *at, size_t length)
 {
 	http_request *request = (http_request*) parser->data;
-	task         *task    = request->task;
+	struct block *block   = (struct block*)request->stream->data;
+	struct task  *task    = request->task;
 
 	uv_fs_t *req = malloc(sizeof(uv_fs_t));
 	uv_buf_t buf = uv_buf_init(at, length);
-	uv_fs_write(uv_default_loop(), req, task->fd, &buf, 1, -1, NULL);
+	uv_fs_write(block->worker->loop, req, task->fd, &buf, 1, block->downloaded_pos, after_write);
 
-	task->cur_size += length;
+	block->downloaded_pos += length;
 
 	return 0;
 }
@@ -134,7 +170,7 @@ on_message_complete(http_parser *parser)
 	dler = task->dler;
 
 	/* remove the task from tasks list */
-	p = &dler->task;
+	p = &dler->tasks;
 	while (*p) {
 		if (*p == task) {
 			*p = task->next;

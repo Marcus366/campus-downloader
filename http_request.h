@@ -12,12 +12,17 @@ typedef struct http_request {
 	uv_tcp_t             *stream;
 
 	enum http_method      method;
+
+	uint64_t              accept_range_start;
+	uint64_t              accept_range_end;
+	char                 *accept_range_buf;
 	
 	uv_buf_t             *send_buf;
 	size_t                send_buf_cnt;
 	
 	http_parser           http_parser;
 	http_parser_settings *http_parser_setting;
+
 
 } http_request;
 
@@ -26,6 +31,9 @@ http_request *http_request_new(struct task *task);
 
 
 void http_request_finish(struct http_request *req);
+
+ 
+void http_request_set_accept_range(http_request *req, uint64_t start, uint64_t end);
 
 
 static void

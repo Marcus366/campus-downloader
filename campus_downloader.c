@@ -3,6 +3,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include "campus_downloader.h"
+#include "block.h"
 
 
 unsigned downloading = 0;
@@ -14,9 +15,20 @@ static int timer_cb(uv_timer_t *handle);
 downloader*
 downloader_new()
 {
+	int i;
 	downloader *dler = malloc(sizeof(downloader));
 
-	dler->task = NULL;
+	dler->mainloop = uv_default_loop();
+
+	dler->tasks = NULL;
+
+	for (i = 0; i < 4; ++i) {
+		struct worker* worker = create_worker(download_worker_cb);
+
+		worker->next = dler->workers;
+		dler->workers = worker->next;
+	}
+
 	return dler;
 }
 
@@ -33,10 +45,10 @@ downloader_run(downloader* dler)
 {
 	uv_timer_t timer;
 	timer.data = dler;
-	uv_timer_init(uv_default_loop(), &timer);
+	uv_timer_init(dler->mainloop, &timer);
 	uv_timer_start(&timer, timer_cb, 0, 500);
 
-	return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
+	return uv_run(dler->mainloop, UV_RUN_DEFAULT);
 }
 
 
@@ -44,7 +56,7 @@ static int
 timer_cb(uv_timer_t *handle)
 {
 	downloader *dler  = (downloader*)handle->data;
-	struct task *task = dler->task;
+	struct task *task = dler->tasks;
 
 	if (task == NULL) {
 		uv_timer_stop(handle);
@@ -56,6 +68,17 @@ timer_cb(uv_timer_t *handle)
 	}
 
 	while (task) {
+		skipnode *node = task->blocks->header[0].next[0];
+		while (node != &task->blocks->header[0]) {
+			struct block *block = (struct block*)node->val;
+			/* critical area start, the downloaded_pos may be changed by worker thread */
+			uint64_t downloaded = block->downloaded_pos - block->confirmed_pos;
+			task->cur_size       += downloaded;
+			block->confirmed_pos += downloaded;
+			/* critical area end */
+			node = node->next[0];
+		}
+		
 		uint64_t now = uv_now(handle->loop);
 		double speed = (task->cur_size - task->last_step_size) * 1.0 / (now - task->last_step_time);
 

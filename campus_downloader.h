@@ -3,6 +3,7 @@
 
 #include <uv.h>
 #include "task.h"
+#include "worker.h"
 #include "http_url.h"
 #include "http_request.h"
 
@@ -12,8 +13,10 @@ typedef struct addrinfo addrinfo;
 extern unsigned downloading;
 
 typedef struct downloader {
-	task          *task;
-	
+	uv_loop_t     *mainloop;
+
+	task          *tasks;
+	worker        *workers;
 } downloader;
 
 

@@ -117,3 +117,58 @@ http_send_request(http_request *req)
 	uv_write_t *write = malloc(sizeof(uv_write_t));
 	uv_write(write, (uv_stream_t*)req->stream, req->send_buf, req->send_buf_cnt, NULL);
 }
+
+void
+http_request_set_method(http_request *req, enum http_method method)
+{
+	req->method = method;
+}
+
+void
+http_set_on_message_begin(http_request *req, http_cb on_message_begin)
+{
+	req->http_parser_setting->on_message_begin = on_message_begin;
+}
+
+void
+http_set_on_url(http_request *req, http_data_cb on_url)
+{
+	req->http_parser_setting->on_url = on_url;
+}
+
+void
+http_set_on_status(http_request *req, http_data_cb on_status)
+{
+	req->http_parser_setting->on_status = on_status;
+}
+
+void
+http_set_on_header_field(http_request *req, http_data_cb on_header_field)
+{
+	req->http_parser_setting->on_header_field = on_header_field;
+}
+
+void
+http_set_on_header_value(http_request *req, http_data_cb on_header_value)
+{
+	req->http_parser_setting->on_header_value = on_header_value;
+}
+
+void
+http_set_on_headers_complete(http_request *req, http_cb on_headers_complete)
+{
+	req->http_parser_setting->on_headers_complete = on_headers_complete;
+}
+
+void
+http_set_on_body(http_request *req, http_data_cb on_body)
+{
+	req->http_parser_setting->on_body = on_body;
+}
+
+void
+http_set_on_message_complete(http_request *req, http_cb on_message_complete)
+{
+	req->http_parser_setting->on_message_complete = on_message_complete;
+}
+

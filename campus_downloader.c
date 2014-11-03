@@ -9,14 +9,14 @@
 unsigned downloading = 0;
 
 
-static int timer_cb(uv_timer_t *handle);
+static void timer_cb(uv_timer_t *handle);
 
 
 downloader*
 downloader_new()
 {
 	int i;
-	downloader *dler = malloc(sizeof(downloader));
+	downloader *dler = (downloader*)malloc(sizeof(downloader));
 
 	dler->mainloop = uv_default_loop();
 
@@ -36,7 +36,7 @@ downloader_new()
 void
 downloader_add_task(downloader *dler, const char *url, const char *fullname)
 {
-	task *newtask = create_task(dler, url, fullname);
+	create_task(dler, url, fullname);
 }
 
 
@@ -52,7 +52,7 @@ downloader_run(downloader* dler)
 }
 
 
-static int
+static void
 timer_cb(uv_timer_t *handle)
 {
 	downloader *dler  = (downloader*)handle->data;
@@ -60,16 +60,16 @@ timer_cb(uv_timer_t *handle)
 
 	if (task == NULL) {
 		uv_timer_stop(handle);
-		return 0;
+		return;
 	}
 
 	if (downloading == 0) {
-		return 0;
+		return;
 	}
 
 	while (task) {
-		skipnode *node = task->blocks->header[0].next[0];
-		while (node != &task->blocks->header[0]) {
+		skipnode *node = task->blocks->header[0]->next[0];
+		while (node != task->blocks->header[0]) {
 			struct block *block = (struct block*)node->val;
 			/* critical area start, the downloaded_pos may be changed by worker thread */
 			uint64_t downloaded = block->downloaded_pos - block->confirmed_pos;
@@ -86,12 +86,11 @@ timer_cb(uv_timer_t *handle)
 		task->last_step_size = task->cur_size;
 		task->last_step_time = now;
 
-		printf("download %lld bytes / %lld bytes ================== speed: %.2lfkb/s %.0f%%\r", 
+		printf("download %ulld bytes / %ulld bytes ================== speed: %.2lfkb/s %.0f%%\r", 
 			   task->cur_size, task->total_size, speed,
 			   task->cur_size * 100.0f / task->total_size);
 
 		task = task->next;
 	}
 
-	return 0;
 }

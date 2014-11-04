@@ -13,17 +13,31 @@ after_fs_write(uv_fs_t *req)
 http_request*
 http_request_new(struct task *task)
 {
-	http_request *req = malloc(sizeof(http_request));
+	http_request *req = malloc(sizeof(struct http_request));
+
+	req->connect = malloc(sizeof(uv_connect_t));
+	req->stream  = malloc(sizeof(uv_tcp_t));
+
 	req->task = task;
 
-	http_parser_init(&req->http_parser, HTTP_RESPONSE);
-	req->http_parser.data = req;
+	req->http_parser = malloc(sizeof(http_parser));
+	http_parser_init(req->http_parser, HTTP_RESPONSE);
+	req->http_parser->data = req;
 
-	req->accept_range_start = -1;
-	req->accept_range_end   = -1;
-	req->accept_range_buf   = NULL;
+	req->accept_range_start  = -1;
+	req->accept_range_end    = -1;
+	req->accept_range_buf[0] = '\0';
 
-	req->http_parser_setting = calloc(1, sizeof(http_parser_settings));
+	/* req->http_parser_setting = calloc(1, sizeof(http_parser_settings)); */
+	req->http_parser_setting = malloc(sizeof(http_parser_settings));
+	req->http_parser_setting->on_body             = NULL;
+	req->http_parser_setting->on_headers_complete = NULL;
+	req->http_parser_setting->on_header_field     = NULL;
+	req->http_parser_setting->on_header_value     = NULL;
+	req->http_parser_setting->on_message_begin    = NULL;
+	req->http_parser_setting->on_message_complete = NULL;
+	req->http_parser_setting->on_status           = NULL;
+	req->http_parser_setting->on_url              = NULL;
 
 	return req;
 }
@@ -35,6 +49,7 @@ http_request_finish(http_request *req)
 	uv_read_stop((uv_stream_t*)req->stream);
 	uv_close((uv_handle_t*)req->stream, NULL);
 
+	free(req->http_parser);
 	free(req->http_parser_setting);
 	free(req);
 }
@@ -45,9 +60,6 @@ http_request_set_accept_range(http_request *req, uint64_t start, uint64_t end)
 {
 	req->accept_range_start = start;
 	req->accept_range_end   = end;
-	if (req->accept_range_buf == NULL) {
-		req->accept_range_buf = malloc(32);
-	}
 	sprintf(req->accept_range_buf, "%llu-%llu", start, end);
 }
 

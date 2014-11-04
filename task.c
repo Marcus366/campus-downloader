@@ -27,6 +27,8 @@ create_task(downloader *dler, const char *url, const char *fullname)
 	task->next          = dler->tasks;
 	dler->tasks         = task;
 
+	task->head_request  = http_request_new(task);
+
 	task->name          = _strdup(fullname);
 	task->cur_size      = 0;
 
@@ -89,6 +91,7 @@ on_resolved(uv_getaddrinfo_t *req, int status, struct addrinfo *res)
 
 	uv_loop_t  *loop = req->loop;
 	task       *task = (struct task*)req->data;
+	http_request *request = task->head_request;
 
 	task->addrinfo = res;
 
@@ -99,12 +102,10 @@ on_resolved(uv_getaddrinfo_t *req, int status, struct addrinfo *res)
 	struct sockaddr_in dest;
 	uv_ip4_addr(addr, http_url_get_port(task->url), &dest);
 
-	uv_connect_t *connect = malloc(sizeof(uv_connect_t));
-	uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
-	uv_tcp_init(loop, client);
+	uv_tcp_init(loop, request->stream);
 
-	client->data = task;
-	uv_tcp_connect(connect, client, (const struct sockaddr*)&dest, send_head_request);
+	request->stream->data = task;
+	uv_tcp_connect(request->connect, request->stream, (const struct sockaddr*)&dest, send_head_request);
 
 	free(req);
 }
@@ -122,9 +123,7 @@ send_head_request(uv_connect_t *req, int status)
 
 	task *task = (struct task*)req->handle->data;
 
-	task->head_request = http_request_new(task);
 	http_request *request = task->head_request;
-	request->stream = (uv_tcp_t*)req->handle;
 	http_set_on_header_field(request, on_header_field);
 	http_set_on_header_value(request, on_header_value);
 	http_set_on_headers_complete(request, on_headers_complete_close);
@@ -150,7 +149,7 @@ on_head_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t *buf)
 	struct task *task = (struct task*)stream->data;
 	http_request *req = task->head_request;
 	if (nread > 0) {
-		nparse = http_parser_execute(&req->http_parser, req->http_parser_setting, buf->base, nread);
+		nparse = http_parser_execute(req->http_parser, req->http_parser_setting, buf->base, nread);
 		if (nparse < nread) {
 			printf("parse incomplete: %ld/%ld parsed\n", nparse, nread);
 		}
@@ -222,9 +221,12 @@ on_headers_complete_close(http_parser *parser)
 
 	http_request_finish(req);
 
-	struct block *block = create_block(task, 0, task->total_size);
 
-	dispatcher_block(task, block);
+	struct block *block1 = create_block(task, 0, task->total_size / 2);
+	dispatcher_block(task, block1);
+
+	struct block *block2 = create_block(task, task->total_size / 2 + 1, task->total_size);
+	dispatcher_block(task, block2);
 
 	return 0;
 }

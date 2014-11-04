@@ -68,6 +68,7 @@ get_block(struct block *block)
 {
 	struct task   *task   = block->task;
 	struct worker *worker = block->worker;
+	http_request  *req    = block->request;
 
 	char addr[17] = { 0 };
 	uv_ip4_name((struct sockaddr_in*)task->addrinfo->ai_addr, addr, 16);
@@ -75,12 +76,10 @@ get_block(struct block *block)
 	struct sockaddr_in dest;
 	uv_ip4_addr(addr, http_url_get_port(task->url), &dest);
 
-	uv_connect_t *connect = malloc(sizeof(uv_connect_t));
-	uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
-	uv_tcp_init(worker->loop, client);
+	uv_tcp_init(worker->loop, req->stream);
 
-	client->data  = block;
-	uv_tcp_connect(connect, client, (const struct sockaddr*)&dest, send_request);
+	req->stream->data  = block;
+	uv_tcp_connect(req->connect, req->stream, (const struct sockaddr*)&dest, send_request);
 }
 
 
@@ -123,7 +122,7 @@ on_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t *buf)
 	struct block *block = (struct block*)stream->data;
 	http_request *req   = block->request;
 	if (nread > 0) {
-		nparse = http_parser_execute(&req->http_parser, req->http_parser_setting, buf->base, nread);
+		nparse = http_parser_execute(req->http_parser, req->http_parser_setting, buf->base, nread);
 		if (nparse < nread) {
 			printf("parse incomplete: %ld/%ld parsed\n", nparse, nread);
 		}
@@ -157,10 +156,11 @@ on_body(http_parser *parser, const char *at, size_t length)
 	uv_buf_t buf = uv_buf_init(at, length);
 
 	/* FIXME:
-	 * offset(7th argument) it is the best block->downloaded_pos,
-	 * but it make the file out of order while hign pressure.
+	 * offset(7th argument) is the best block->downloaded_pos,
+	 * but it make the file out of order while high pressure.
 	 */
-	uv_fs_write(block->worker->loop, req, task->fd, &buf, 1, -1 /* block->downloaded_pos */, after_write);
+	/* uv_fs_write(block->worker->loop, req, task->fd, &buf, 1, -1, NULL); */
+	uv_fs_write(block->worker->loop, req, task->fd, &buf, 1, block->downloaded_pos , NULL);
 
 	block->downloaded_pos += length;
 

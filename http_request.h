@@ -9,18 +9,19 @@ struct downloader;
 
 typedef struct http_request {
 	struct task          *task;
+	uv_connect_t         *connect;
 	uv_tcp_t             *stream;
 
 	enum http_method      method;
 
 	uint64_t              accept_range_start;
 	uint64_t              accept_range_end;
-	char                 *accept_range_buf;
+	char                  accept_range_buf[32];
 	
 	uv_buf_t             *send_buf;
 	size_t                send_buf_cnt;
 	
-	http_parser           http_parser;
+	http_parser          *http_parser;
 	http_parser_settings *http_parser_setting;
 
 

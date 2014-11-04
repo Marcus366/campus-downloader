@@ -8,8 +8,8 @@ int
 main(int argc, char** argv)
 {
 	char *str, *filename;
-	//str = "http://github-windows.s3.amazonaws.com/GitHubSetup.exe";
-	str = "http://127.0.0.1/jdk-7u17-windows-x64.exe";
+	str = "http://github-windows.s3.amazonaws.com/GitHubSetup.exe";
+	//str = "http://127.0.0.1/jdk-7u17-windows-x64.exe";
 	filename = strrchr(str, '/') + 1;
 
 	if (argc == 2) {

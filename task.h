@@ -28,7 +28,7 @@ typedef struct task {
 	/* */
 	uint64_t           cur_size;
 	uint64_t           total_size;
-	skiplist          *blocks;
+	struct block      *blocks;
 
 	/* time statistic */
 	uint64_t           start_time;

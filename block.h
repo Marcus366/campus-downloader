@@ -16,7 +16,8 @@ typedef struct block {
 	uint64_t       downloaded_pos;
 	uint64_t       confirmed_pos;
 
-	struct block  *next;
+	struct block  *task_next;
+	struct block  *worker_next;
 } block;
 
 

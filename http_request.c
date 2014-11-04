@@ -48,7 +48,7 @@ http_request_set_accept_range(http_request *req, uint64_t start, uint64_t end)
 	if (req->accept_range_buf == NULL) {
 		req->accept_range_buf = malloc(32);
 	}
-	sprintf(req->accept_range_buf, "%ulld-%ulld", start, end);
+	sprintf(req->accept_range_buf, "%llu-%llu", start, end);
 }
 
 static const uv_buf_t ENDLINE  = {.base = "\r\n", .len = 2};
@@ -71,7 +71,7 @@ http_send_request(http_request *req)
 
 	req->send_buf_cnt = 10;
 	if (req->accept_range_start != -1) {
-		req->send_buf_cnt += 2;
+		req->send_buf_cnt += 3;
 	}
 	req->send_buf = malloc(req->send_buf_cnt * sizeof(uv_buf_t));
 
@@ -91,32 +91,43 @@ http_send_request(http_request *req)
 		case REQ_VERSION:
 			buf[i++] = uv_buf_init("HTTP/1.1", sizeof("HTTP/1.1") - 1);
 			buf[i++] = ENDLINE;
-			req_state = REQ_VERSION;
+			req_state = REQ_HOST;
 			break;
 		case REQ_HOST:
 			buf[i++] = uv_buf_init("Host: ", sizeof("Host: ") - 1);
 			buf[i++] = http_url_get_field(req->task->url, UF_HOST);
+			buf[i++] = ENDLINE;
 			req_state = REQ_ACCEPT_RANGE;
 			break;
 		case REQ_ACCEPT_RANGE:
 			if (req->accept_range_start != -1) {
 				buf[i++] = uv_buf_init("Range: bytes=", sizeof("Range: bytes=") - 1);
 				buf[i++] = uv_buf_init(req->accept_range_buf, strlen(req->accept_range_buf));
+				buf[i++] = ENDLINE;
 			}
 			req_state = REQ_END;
 			break;
 		case REQ_END:
-			buf[i++] = ENDLINE;
 			buf[i++] = ENDLINE;
 			break;
 		default:
 			break;
 		}
 	}
+
+	char str[1024];
+	char *p = str;
+	for (i = 0; i < req->send_buf_cnt; ++i) {
+		memcpy(p, req->send_buf[i].base, req->send_buf[i].len);
+		p += req->send_buf[i].len;
+	}
+	*p = 0;
+	printf("%s", str);
 	
 	uv_write_t *write = malloc(sizeof(uv_write_t));
 	uv_write(write, (uv_stream_t*)req->stream, req->send_buf, req->send_buf_cnt, NULL);
 }
+
 
 void
 http_request_set_method(http_request *req, enum http_method method)
@@ -124,11 +135,13 @@ http_request_set_method(http_request *req, enum http_method method)
 	req->method = method;
 }
 
+
 void
 http_set_on_message_begin(http_request *req, http_cb on_message_begin)
 {
 	req->http_parser_setting->on_message_begin = on_message_begin;
 }
+
 
 void
 http_set_on_url(http_request *req, http_data_cb on_url)
@@ -136,11 +149,13 @@ http_set_on_url(http_request *req, http_data_cb on_url)
 	req->http_parser_setting->on_url = on_url;
 }
 
+
 void
 http_set_on_status(http_request *req, http_data_cb on_status)
 {
 	req->http_parser_setting->on_status = on_status;
 }
+
 
 void
 http_set_on_header_field(http_request *req, http_data_cb on_header_field)
@@ -148,11 +163,13 @@ http_set_on_header_field(http_request *req, http_data_cb on_header_field)
 	req->http_parser_setting->on_header_field = on_header_field;
 }
 
+
 void
 http_set_on_header_value(http_request *req, http_data_cb on_header_value)
 {
 	req->http_parser_setting->on_header_value = on_header_value;
 }
+
 
 void
 http_set_on_headers_complete(http_request *req, http_cb on_headers_complete)
@@ -160,15 +177,16 @@ http_set_on_headers_complete(http_request *req, http_cb on_headers_complete)
 	req->http_parser_setting->on_headers_complete = on_headers_complete;
 }
 
+
 void
 http_set_on_body(http_request *req, http_data_cb on_body)
 {
 	req->http_parser_setting->on_body = on_body;
 }
 
+
 void
 http_set_on_message_complete(http_request *req, http_cb on_message_complete)
 {
 	req->http_parser_setting->on_message_complete = on_message_complete;
 }
-

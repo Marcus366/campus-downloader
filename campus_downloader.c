@@ -26,7 +26,7 @@ downloader_new()
 		struct worker* worker = create_worker(download_worker_cb);
 
 		worker->next = dler->workers;
-		dler->workers = worker->next;
+		dler->workers = worker;
 	}
 
 	return dler;
@@ -68,15 +68,14 @@ timer_cb(uv_timer_t *handle)
 	}
 
 	while (task) {
-		skipnode *node = task->blocks->header[0]->next[0];
-		while (node != task->blocks->header[0]) {
-			struct block *block = (struct block*)node->val;
+		struct block *block = task->blocks;
+		while (block != NULL) {
 			/* critical area start, the downloaded_pos may be changed by worker thread */
 			uint64_t downloaded = block->downloaded_pos - block->confirmed_pos;
 			task->cur_size       += downloaded;
 			block->confirmed_pos += downloaded;
 			/* critical area end */
-			node = node->next[0];
+			block = block->task_next;
 		}
 		
 		uint64_t now = uv_now(handle->loop);
@@ -86,7 +85,7 @@ timer_cb(uv_timer_t *handle)
 		task->last_step_size = task->cur_size;
 		task->last_step_time = now;
 
-		printf("download %ulld bytes / %ulld bytes ================== speed: %.2lfkb/s %.0f%%\r", 
+		printf("download %llu bytes / %llu bytes ====== speed: %.2lfkb/s %.0f%%\r", 
 			   task->cur_size, task->total_size, speed,
 			   task->cur_size * 100.0f / task->total_size);
 

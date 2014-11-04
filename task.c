@@ -17,13 +17,6 @@ static int on_header_field(http_parser *parser, const char *at, size_t length);
 static int on_header_value(http_parser *parser, const char *at, size_t length);
 static int on_headers_complete_close(http_parser *parser);
 
-static int
-block_cmp(const void *lhs, const void *rhs)
-{
-	block *lb = (block*)lhs, *rb = (block*)rhs;
-	return (int)(lb->start - rb->start);
-}
-
 
 struct task*
 create_task(downloader *dler, const char *url, const char *fullname)
@@ -37,15 +30,13 @@ create_task(downloader *dler, const char *url, const char *fullname)
 	task->name          = _strdup(fullname);
 	task->cur_size      = 0;
 
-	task->blocks        = skiplist_new(16, block_cmp);
+	task->blocks        = NULL;
 
 	task->start_time    = uv_now(dler->mainloop);
 	task->consumed_time = 0;
 
 	task->last_step_time = task->start_time;
 	task->last_step_size = task->cur_size;
-
-	task->next          = NULL;
 
 	if (strncmp(url, "http://", 7) == 0) {
 		task->url = http_parse_url(url);
@@ -79,7 +70,7 @@ create_task(downloader *dler, const char *url, const char *fullname)
 	uv_getaddrinfo_t *getaddrinfo = malloc(sizeof(uv_getaddrinfo_t));
 	getaddrinfo->data = task;
 
-	uv_getaddrinfo(uv_default_loop(), getaddrinfo, on_resolved, host, NULL, &hints);
+	uv_getaddrinfo(dler->mainloop, getaddrinfo, on_resolved, host, NULL, &hints);
 
 	free(host);
 
@@ -232,7 +223,8 @@ on_headers_complete_close(http_parser *parser)
 	http_request_finish(req);
 
 	struct block *block = create_block(task, 0, task->total_size);
-	get_block(block);
+
+	dispatcher_block(task, block);
 
 	return 0;
 }

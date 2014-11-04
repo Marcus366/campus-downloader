@@ -14,6 +14,7 @@ typedef struct worker {
 	block         *waiting_list;
 
 	uv_prepare_t  *prepare;
+	uv_async_t    *async;
 
 	struct worker *next;
 } worker;

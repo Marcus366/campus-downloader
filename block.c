@@ -29,7 +29,10 @@ create_block(struct task *task, uint64_t start, uint64_t end)
 
 	block->request = http_request_new(task);
 
-	block->next = NULL;
+	block->task_next = task->blocks;
+	task->blocks     = block;
+
+	block->worker_next = NULL;
 
 	return block;
 }
@@ -52,8 +55,11 @@ dispatcher_block(struct task *task, struct block *block)
 
 	block->worker = worker;
 
-	block->next = worker->waiting_list;
+	block->worker_next   = worker->waiting_list;
 	worker->waiting_list = block;
+	
+	/* wake up the worker thread if sleeping */
+	uv_async_send(worker->async);
 }
 
 
@@ -73,7 +79,6 @@ get_block(struct block *block)
 	uv_tcp_t *client = malloc(sizeof(uv_tcp_t));
 	uv_tcp_init(worker->loop, client);
 
-	connect->data = block;
 	client->data  = block;
 	uv_tcp_connect(connect, client, (const struct sockaddr*)&dest, send_request);
 }
@@ -87,13 +92,14 @@ send_request(uv_connect_t *req, int status)
 		exit(-1);
 	}
 
-	struct block *block = (struct block*)req->data;
+	struct block *block = (struct block*)req->handle->data;
 	struct task  *task = block->task;
 	http_request *request = block->request;
 
 	downloading = 1;
 	uv_read_start(req->handle, on_alloc, on_read);
 
+	//printf("tid: %d\n", block->worker->tid);
 	request->stream = (uv_tcp_t*) req->handle;
 	http_set_on_body(request, on_body);
 	http_set_on_message_complete(request, on_message_complete);
@@ -143,13 +149,18 @@ after_write(uv_write_t *req)
 static int
 on_body(http_parser *parser, const char *at, size_t length)
 {
-	http_request *request = (http_request*) parser->data;
+	http_request *request = (http_request*)parser->data;
 	struct block *block   = (struct block*)request->stream->data;
 	struct task  *task    = request->task;
 
 	uv_fs_t *req = malloc(sizeof(uv_fs_t));
 	uv_buf_t buf = uv_buf_init(at, length);
-	uv_fs_write(block->worker->loop, req, task->fd, &buf, 1, block->downloaded_pos, after_write);
+
+	/* FIXME:
+	 * offset(7th argument) it is the best block->downloaded_pos,
+	 * but it make the file out of order while hign pressure.
+	 */
+	uv_fs_write(block->worker->loop, req, task->fd, &buf, 1, -1 /* block->downloaded_pos */, after_write);
 
 	block->downloaded_pos += length;
 
@@ -175,7 +186,7 @@ on_message_complete(http_parser *parser)
 		if (*p == task) {
 			*p = task->next;
 			speed = task->total_size * 1.0 / task->consumed_time;
-			/* TODO free the task resource */
+			/* TODO: free the task resource */
 			break;
 		} else {
 			p = &task->next;

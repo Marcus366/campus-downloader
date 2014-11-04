@@ -15,10 +15,8 @@ create_worker(uv_thread_cb cb)
 	worker->loop = malloc(sizeof(uv_loop_t));
 	uv_loop_init(worker->loop);
 
-	worker->prepare = malloc(sizeof(uv_prepare_t));
-	uv_prepare_init(worker->loop, worker->prepare);
-	uv_prepare_start(worker->prepare, start_waiting);
-	worker->prepare->data = worker;
+	worker->prepare = NULL;
+	worker->async   = NULL;
 
 	worker->download_list = NULL;
 	worker->waiting_list  = NULL;
@@ -36,6 +34,15 @@ download_worker_cb(void *arg)
 {
 	struct worker *worker = (struct worker*)arg;
 
+	worker->prepare = malloc(sizeof(uv_prepare_t));
+	uv_prepare_init(worker->loop, worker->prepare);
+	uv_prepare_start(worker->prepare, start_waiting);
+	worker->prepare->data = worker;
+
+	worker->async = malloc(sizeof(uv_async_t));
+	uv_async_init(worker->loop, worker->async, NULL);
+	worker->async->data = worker;
+
 	uv_run(worker->loop, UV_RUN_DEFAULT);
 }
 
@@ -49,12 +56,12 @@ start_waiting(uv_prepare_t *prepare)
 	while (p) {
 		get_block(p);
 		tail = p;
-		p = p->next;
+		p = p->worker_next;
 	}
 
 	/* link the waiting_list to download_list */
 	if (tail != NULL) {
-		tail->next = worker->download_list; 
+		tail->worker_next = worker->download_list;
 
 		worker->download_list = worker->waiting_list;
 		worker->waiting_list  = NULL;

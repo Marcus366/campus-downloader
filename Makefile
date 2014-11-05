@@ -7,11 +7,12 @@ OBJS=\
 	task.o								\
 	worker.o							\
 	block.o								\
+	http_request.o				\
 	http_url.o						\
-	http_request.o
+	http_parser.o
 
 downloader: $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) $<
+	$(CC) $(CFLAGS) $(OBJS) -luv -o $@
 
 main.o: main.c
 	$(CC) $(CFLAGS) $^ -c $<

@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "campus_downloader.h"
 #include "block.h"
 #include "task.h"
@@ -18,7 +19,7 @@ static int on_message_complete(http_parser *parser);
 struct block*
 create_block(struct task *task, uint64_t start, uint64_t end)
 {
-	struct block *block = malloc(sizeof(block));
+	struct block *block = (struct block*)malloc(sizeof(block));
 
 	block->task  = task;
 	block->start = start;
@@ -92,7 +93,6 @@ send_request(uv_connect_t *req, int status)
 	}
 
 	struct block *block = (struct block*)req->handle->data;
-	struct task  *task = block->task;
 	http_request *request = block->request;
 
 	downloading = 1;
@@ -111,6 +111,7 @@ send_request(uv_connect_t *req, int status)
 static void
 on_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
 {
+  (void) handle;
 	*buf = uv_buf_init(malloc(suggested_size), suggested_size);
 }
 
@@ -152,8 +153,8 @@ on_body(http_parser *parser, const char *at, size_t length)
 	struct block *block   = (struct block*)request->stream->data;
 	struct task  *task    = request->task;
 
-	uv_fs_t *req = malloc(sizeof(uv_fs_t));
-	uv_buf_t buf = uv_buf_init(at, length);
+	uv_fs_t *req = (uv_fs_t*)malloc(sizeof(uv_fs_t));
+	uv_buf_t buf = uv_buf_init((char*)at, length);
 
 	/* FIXME:
 	 * offset(7th argument) is the best block->downloaded_pos,
@@ -174,15 +175,15 @@ on_message_complete(http_parser *parser)
 	task **p, *task;
 	http_request *req;
 	downloader *dler;
-	double speed;
+	double speed = 0.0;
 
-	req  = parser->data;
+	req  = (http_request*)parser->data;
 	task = req->task;
 	dler = task->dler;
 
 	/* remove the task from tasks list */
 	p = &dler->tasks;
-	while (*p) {
+	while (*p != NULL) {
 		if (*p == task) {
 			*p = task->next;
 			speed = task->total_size * 1.0 / task->consumed_time;

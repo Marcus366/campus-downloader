@@ -4,14 +4,16 @@
 
 #include "http_url.h"
 
+#define min(a, b) ((a) > (b) ? (b) : (a))
+
 
 http_url*
 http_parse_url(const char *str)
 {
-	http_url *url = malloc(sizeof(http_url));
+	http_url *url = (http_url*)malloc(sizeof(http_url));
 
 	int   len  = strlen(str);
-	char *base = malloc(len);
+	char *base = (char*)malloc(len);
 	memcpy(base, str, len);
 
 	url->raw_url = uv_buf_init(base, len);

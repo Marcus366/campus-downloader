@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
 #include "task.h"
 #include "block.h"
 #include "http_url.h"
@@ -21,7 +23,7 @@ static int on_headers_complete_close(http_parser *parser);
 struct task*
 create_task(downloader *dler, const char *url, const char *fullname)
 {
-	struct task *task = malloc(sizeof(struct task));
+	struct task *task = (struct task*)malloc(sizeof(struct task));
 	
 	task->dler          = dler;
 	task->next          = dler->tasks;
@@ -29,7 +31,7 @@ create_task(downloader *dler, const char *url, const char *fullname)
 
 	task->head_request  = http_request_new(task);
 
-	task->name          = _strdup(fullname);
+	task->name          = strdup(fullname);
 	task->cur_size      = 0;
 
 	task->blocks        = NULL;
@@ -44,7 +46,7 @@ create_task(downloader *dler, const char *url, const char *fullname)
 		task->url = http_parse_url(url);
 	} else {
 		int   len     = strlen(url);
-		char *new_url = calloc(1, len + 7 + 1);
+		char *new_url = (char*)calloc(1, len + 7 + 1);
 		memcpy(new_url, "http://", 7);
 		memcpy(new_url + 7, url, len);
 
@@ -60,7 +62,7 @@ create_task(downloader *dler, const char *url, const char *fullname)
 
 	/* change host to a zero-terminated string for uv_getaddrinfo() */
 	uv_buf_t buf = http_url_get_field(task->url, UF_HOST);
-	char *host = calloc(1, buf.len + 1);
+	char *host = (char*)calloc(1, buf.len + 1);
 	memcpy(host, buf.base, buf.len);
 
 	struct addrinfo hints;
@@ -69,7 +71,7 @@ create_task(downloader *dler, const char *url, const char *fullname)
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags    = 0;
 
-	uv_getaddrinfo_t *getaddrinfo = malloc(sizeof(uv_getaddrinfo_t));
+	uv_getaddrinfo_t *getaddrinfo = (uv_getaddrinfo_t*)malloc(sizeof(uv_getaddrinfo_t));
 	getaddrinfo->data = task;
 
 	uv_getaddrinfo(dler->mainloop, getaddrinfo, on_resolved, host, NULL, &hints);
@@ -85,7 +87,6 @@ on_resolved(uv_getaddrinfo_t *req, int status, struct addrinfo *res)
 {
 	if (status != 0) {
 		printf("on resolved failed: %s\n", uv_strerror(status));
-		system("pause");
 		exit(-1);
 	}
 
@@ -216,11 +217,9 @@ static int
 on_headers_complete_close(http_parser *parser)
 {
 	http_request *req = (http_request*) parser->data;
-	uv_loop_t   *loop = req->stream->loop;
 	task        *task = (struct task*)req->task;
 
 	http_request_finish(req);
-
 
 	struct block *block1 = create_block(task, 0, task->total_size / 2);
 	dispatcher_block(task, block1);

@@ -85,7 +85,7 @@ timer_cb(uv_timer_t *handle)
 		task->last_step_size = task->cur_size;
 		task->last_step_time = now;
 
-		printf("download %llu bytes / %llu bytes ====== speed: %.2lfkb/s %.0f%%\r", 
+		printf("download %lu bytes / %lu bytes ====== speed: %.2lfkb/s %.0f%%\r", 
 			   task->cur_size, task->total_size, speed,
 			   task->cur_size * 100.0f / task->total_size);
 

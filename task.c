@@ -83,6 +83,25 @@ create_task(downloader *dler, const char *url, const char *fullname)
 
 
 void
+free_task(struct task *task)
+{
+  struct block *block = task->blocks;
+  while (block) {
+    // free block;
+    block = block->task_next;
+  }
+
+
+  free(task->url);
+  free(task->name);
+
+  http_request_delete(task->head_request);
+
+  free(task);
+}
+
+
+void
 on_resolved(uv_getaddrinfo_t *req, int status, struct addrinfo *res)
 {
 	if (status != 0) {
@@ -192,7 +211,7 @@ on_header_field(http_parser *parser, const char *at, size_t length)
 static int
 on_header_value(http_parser *parser, const char *at, size_t length)
 {
-	char *str = malloc(length + 1);
+	char *str = (char*)malloc(length + 1);
 	memcpy(str, at, length);
 	str[length] = 0;
 	printf("%s\n", str);
@@ -219,7 +238,7 @@ on_headers_complete_close(http_parser *parser)
 	http_request *req = (http_request*) parser->data;
 	task        *task = (struct task*)req->task;
 
-	http_request_finish(req);
+	http_request_close(req);
 
 	struct block *block1 = create_block(task, 0, task->total_size / 2);
 	dispatcher_block(task, block1);

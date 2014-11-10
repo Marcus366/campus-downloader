@@ -8,12 +8,11 @@ static void start_waiting(uv_prepare_t *prepare);
 struct worker*
 create_worker(uv_thread_cb cb)
 {
-	struct worker *worker = malloc(sizeof(struct worker));
+	struct worker *worker = (struct worker*)malloc(sizeof(struct worker));
 
 	worker->cb  = cb;
 
-	worker->loop = malloc(sizeof(uv_loop_t));
-	uv_loop_init(worker->loop);
+	worker->loop = uv_loop_new();
 
 	worker->prepare = NULL;
 	worker->async   = NULL;
@@ -23,9 +22,17 @@ create_worker(uv_thread_cb cb)
 
 	worker->next = NULL;
 
-	uv_thread_create(&worker->tid, cb, worker); 
+	uv_thread_create(&worker->tid, cb, worker);
 
 	return worker;
+}
+
+
+void
+cancel_worker(struct worker *worker)
+{
+  uv_loop_close(worker->loop);
+  
 }
 
 
@@ -34,12 +41,12 @@ download_worker_cb(void *arg)
 {
 	struct worker *worker = (struct worker*)arg;
 
-	worker->prepare = malloc(sizeof(uv_prepare_t));
+	worker->prepare = (uv_prepare_t*)malloc(sizeof(uv_prepare_t));
 	uv_prepare_init(worker->loop, worker->prepare);
 	uv_prepare_start(worker->prepare, start_waiting);
 	worker->prepare->data = worker;
 
-	worker->async = malloc(sizeof(uv_async_t));
+	worker->async = (uv_async_t*)malloc(sizeof(uv_async_t));
 	uv_async_init(worker->loop, worker->async, NULL);
 	worker->async->data = worker;
 

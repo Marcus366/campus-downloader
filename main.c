@@ -7,7 +7,7 @@
 int
 main(int argc, char** argv)
 {
-	char *str, *filename;
+	const char *str, *filename;
 	str = "http://github-windows.s3.amazonaws.com/GitHubSetup.exe";
 	//str = "http://127.0.0.1/jdk-7u17-windows-x64.exe";
 	filename = strrchr(str, '/') + 1;
@@ -24,6 +24,8 @@ main(int argc, char** argv)
 	downloader_add_task(dler, str, filename);
 	downloader_run(dler);
 
-	system("pause");
+  // never come here.
+  // make valgrind happy.
+
 	return 0;
 }

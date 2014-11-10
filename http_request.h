@@ -24,14 +24,15 @@ typedef struct http_request {
 	http_parser          *http_parser;
 	http_parser_settings *http_parser_setting;
 
+  unsigned              use_accept_range : 1;
 
 } http_request;
 
 
 http_request *http_request_new(struct task *task);
+void http_request_delete(struct http_request *request);
 
-
-void http_request_finish(struct http_request *req);
+void http_request_close(struct http_request *req);
 
  
 void http_request_set_accept_range(http_request *req, uint64_t start, uint64_t end);

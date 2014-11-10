@@ -17,7 +17,7 @@ typedef struct task {
 
 	/* attached file message */
 	uv_file            fd;
-	const char        *name;
+	char              *name;
 
 	/* server message */
 	http_url          *url;
@@ -40,11 +40,14 @@ typedef struct task {
 
 	/* a list to link all the task */
 	struct task       *next;
+
 } task;
 
 
 struct task* create_task(struct downloader *dler, const char *url, const char *fullname);
 
+
+void free_task(struct task *task);
 
 
 #endif

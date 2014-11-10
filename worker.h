@@ -22,6 +22,8 @@ typedef struct worker {
 
 struct worker* create_worker(uv_thread_cb cb);
 
+void   cancel_worker(struct worker *worker);
+
 void download_worker_cb(void *arg);
 
 #endif

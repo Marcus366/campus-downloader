@@ -19,7 +19,7 @@ static int on_message_complete(http_parser *parser);
 struct block*
 create_block(struct task *task, uint64_t start, uint64_t end)
 {
-	struct block *block = (struct block*)malloc(sizeof(block));
+	struct block *block = (struct block*)malloc(sizeof(struct block));
 
 	block->task  = task;
 	block->start = start;
@@ -135,14 +135,7 @@ on_read(uv_stream_t* stream, ssize_t nread, const uv_buf_t *buf)
 		exit(-1);
 	}
 
-	free(buf->base);
-}
-
-
-static void
-after_write(uv_write_t *req)
-{
-	free(req);
+	//free(buf->base);
 }
 
 
@@ -195,7 +188,7 @@ on_message_complete(http_parser *parser)
 	}
 	
 	/* close the tcp connection */
-	http_request_finish(req);
+	http_request_close(req);
 
 	
 	printf("                                                                             \r");

@@ -17,6 +17,8 @@ typedef struct downloader {
 
 	task          *tasks;
 	worker        *workers;
+
+  uv_udp_t      *discover;
 } downloader;
 
 
@@ -28,4 +30,3 @@ int downloader_run(downloader *dler);
 
 
 #endif
-

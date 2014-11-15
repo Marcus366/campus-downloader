@@ -9,13 +9,19 @@
 unsigned downloading = 0;
 
 
-static void timer_cb(uv_timer_t *handle);
+static void settle(uv_timer_t *handle);
+static void discover(uv_timer_t handle);
+static void on_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
+static void on_discover(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, 
+                      const struct sockaddr *addr, unsigned flags);
 
 
 downloader*
 downloader_new()
 {
 	int i;
+  struct sockaddr_in addr;
+
 	downloader *dler = (downloader*)malloc(sizeof(downloader));
 
 	dler->mainloop = uv_default_loop();
@@ -28,6 +34,13 @@ downloader_new()
 		worker->next = dler->workers;
 		dler->workers = worker;
 	}
+
+  dler->discover = (uv_udp_t*)malloc(sizeof(uv_udp_t));
+  dler->discover->data = dler;
+  uv_udp_init(dler->mainloop, dler->discover);
+  uv_ip4_addr("0.0.0.0", 0, &addr);
+  uv_udp_bind(dler->discover, (struct sockaddr*)&addr, 0);
+  uv_udp_recv_start(dler->discover, on_alloc, on_discover);
 
 	return dler;
 }
@@ -46,14 +59,14 @@ downloader_run(downloader* dler)
 	uv_timer_t timer;
 	timer.data = dler;
 	uv_timer_init(dler->mainloop, &timer);
-	uv_timer_start(&timer, timer_cb, 0, 500);
+	uv_timer_start(&timer, settle, 0, 500);
 
 	return uv_run(dler->mainloop, UV_RUN_DEFAULT);
 }
 
 
 static void
-timer_cb(uv_timer_t *handle)
+settle(uv_timer_t *handle)
 {
 	downloader *dler  = (downloader*)handle->data;
 	struct task *task = dler->tasks;
@@ -93,3 +106,18 @@ timer_cb(uv_timer_t *handle)
 	}
 
 }
+
+
+static void
+on_alloc(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf)
+{
+  (void) handle;
+  *buf = uv_buf_init((char*)malloc(suggested_size), suggested_size);
+}
+
+
+static void on_discover(uv_udp_t *handle, ssize_t nread, const uv_buf_t *buf, 
+                      const struct sockaddr *addr, unsigned flags)
+{
+}
+
